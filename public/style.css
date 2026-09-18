@@ -1,0 +1,62 @@
+/* 1) Ranglar, shrift va yumaloqlik shu yerda — dizaynni asosan shu qiymatlarni o'zgartirib boshlang */
+:root {
+  --brand: #1800ad;  --bg: #f7eefb;  --surface: #fff;
+  --text: #1c1433;   --muted: #6b6280;  --line: #e5d8ee;
+  --radius: 16px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); display: flex; }
+button { font: inherit; cursor: pointer; border: 0; }
+
+/* 2) Yon panel: telefonda yashirin (chapga surilgan), kompyuterda doim ko'rinadi */
+#sidebar { position: fixed; inset: 0 auto 0 0; width: 280px; z-index: 20; display: flex; flex-direction: column; gap: 12px;
+  padding: 16px; background: var(--surface); border-right: 1px solid var(--line); transform: translateX(-100%); transition: transform .25s; }
+#sidebar.open { transform: none; }
+#backdrop { position: fixed; inset: 0; z-index: 10; background: #0006; opacity: 0; pointer-events: none; transition: opacity .25s; }
+#backdrop.show { opacity: 1; pointer-events: auto; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--brand); }
+.btn-new { padding: 10px; border-radius: 12px; background: var(--brand); color: #fff; }
+#chatList { list-style: none; padding: 0; overflow-y: auto; flex: 1; }
+#chatList li { display: flex; align-items: center; border-radius: 10px; }
+#chatList li.active { background: var(--bg); }
+.chat-title { flex: 1; padding: 10px; text-align: left; background: none; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-del { padding: 8px 10px; background: none; color: var(--muted); }
+
+/* 3) Chat oynasi. 100dvh — telefondagi manzil paneli hisobga olinadi (100vh xato beradi) */
+#chat { flex: 1; min-width: 0; height: 100dvh; display: flex; flex-direction: column; }
+.topbar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; font-weight: 700; color: var(--brand); }
+#menu { background: none; font-size: 22px; color: var(--brand); }
+.hero { display: none; text-align: center; padding: 0 16px 20px; }
+.hero h1 { margin-top: 10px; font-size: 1.6rem; color: var(--brand); }
+.hero p { margin-top: 4px; color: var(--muted); }
+
+.messages { flex: 1; width: 100%; max-width: 760px; margin: 0 auto; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.msg { max-width: 88%; padding: 10px 14px; border-radius: var(--radius); line-height: 1.55; overflow-wrap: anywhere; }
+.msg.user { align-self: flex-end; background: var(--brand); color: #fff; }
+.msg.assistant { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); }
+.msg.loading { color: var(--muted); font-style: italic; }
+.sources { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: .82rem; display: flex; flex-direction: column; gap: 4px; }
+.sources a { color: var(--brand); }
+
+/* 4) Input paneli: pastda, iPhone'ning pastki chizig'i uchun safe-area qo'shilgan */
+.composer { width: 100%; max-width: 760px; margin: 0 auto; padding: 8px 16px calc(12px + env(safe-area-inset-bottom)); }
+.composer small { display: block; margin-top: 6px; text-align: center; color: var(--muted); font-size: .75rem; }
+#status { min-height: 1.2em; margin-bottom: 4px; font-size: .85rem; color: #b00020; }
+.box { display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; }
+textarea { flex: 1; max-height: 140px; padding: 6px 0; border: 0; outline: 0; resize: none; font: inherit; background: none; color: var(--text); }
+#send { width: 38px; height: 38px; border-radius: 50%; background: var(--brand); color: #fff; }
+#send:disabled { opacity: .4; cursor: not-allowed; }
+
+/* 5) Chat bo'sh bo'lsa: xabarlar yashiriladi, logo + input ekran O'RTASIGA tushadi.
+      margin:auto qolgan bo'sh joyni teng bo'lib, guruhni markazga suradi */
+#chat.is-empty .messages { display: none; }
+#chat.is-empty .hero { display: block; margin-top: auto; }
+#chat.is-empty .composer { margin-bottom: auto; }
+
+/* 6) Kompyuter: yon panel doim ochiq */
+@media (min-width: 768px) {
+  #sidebar { position: static; transform: none; }
+  #backdrop, #menu { display: none; }
+}

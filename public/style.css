@@ -94,5 +94,9 @@ textarea { flex: 1; max-height: 140px; padding: 6px 0; border: 0; outline: 0; re
 .badge.warn { background: #fff4e0; color: #8a5300; }
 
 /* 7) Kompyuter: panel ochilganda chat o'ngga suriladi. Telefon: pastki bo'sh joy kattaroq */
-@media (min-width: 768px) { body.side-open #chat { margin-left: 280px; } #backdrop { display: none; } }
+@media (min-width: 768px) {
+  body.side-open #chat { margin-left: 280px; }
+  body.side-open #menu { display: none; }   /* panel ochiq bo'lsa, tepadagi belgi yashirinadi */
+  #backdrop { display: none; }
+}
 @media (max-width: 767px) { :root { --foot: 28px; } }   /* telefonda yozuv va input pastdan ko'tarilgan */

@@ -99,4 +99,9 @@ el.input.addEventListener("input", () => {              // input balandligi matn
 });
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");   // PWA
+function fitHeight() {
+  document.documentElement.style.setProperty("--app-h", (window.visualViewport?.height || innerHeight) + "px");
+}
+window.visualViewport?.addEventListener("resize", fitHeight);
+fitHeight();
 render();

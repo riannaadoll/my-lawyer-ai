@@ -25,7 +25,8 @@ button { font: inherit; cursor: pointer; border: 0; }
 .chat-del { padding: 8px 10px; background: none; color: var(--muted); }
 
 /* 3) Chat oynasi. 100dvh — telefondagi manzil paneli hisobga olinadi (100vh xato beradi) */
-#chat { flex: 1; min-width: 0; height: 100dvh; display: flex; flex-direction: column; }
+#chat { flex: 1; min-width: 0; height: 100dvh;  display: flex; flex-direction: column; }
+#chat { height: var(--app-h, 100dvh); }
 .topbar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; font-weight: 700; color: var(--brand); }
 #menu { background: none; font-size: 22px; color: var(--brand); }
 .hero { display: none; text-align: center; padding: 0 16px 20px; }
@@ -41,7 +42,7 @@ button { font: inherit; cursor: pointer; border: 0; }
 .sources a { color: var(--brand); }
 
 /* 4) Input paneli: pastda, iPhone'ning pastki chizig'i uchun safe-area qo'shilgan */
-.composer { width: 100%; max-width: 760px; margin: 0 auto; padding: 8px 16px calc(12px + env(safe-area-inset-bottom)); }
+.composer { width: 100%; max-width: 760px; margin: 0 auto; padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); }
 .composer small { display: block; margin-top: 6px; text-align: center; color: var(--muted); font-size: .75rem; }
 #status { min-height: 1.2em; margin-bottom: 4px; font-size: .85rem; color: #b00020; }
 .box { display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; }

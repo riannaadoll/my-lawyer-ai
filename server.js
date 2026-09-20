@@ -6,7 +6,8 @@ const rateLimit = require("express-rate-limit");
 const app = express();
 const PORT = process.env.PORT || 3000;             // Render portni o'zi beradi
 const API_KEY = process.env.GEMINI_API_KEY;        // kalit kodda EMAS, muhit o'zgaruvchisida
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+// Modellar ketma-ket sinaladi: birinchisi topilmasa (404), keyingisiga o'tadi
+const MODELS = [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-2.5-flash"].filter(Boolean);
 
 const MAX_CHARS = 1500;   // bitta xabarning maksimal uzunligi
 const MAX_HISTORY = 12;   // Geminiga yuboriladigan oxirgi xabarlar soni
@@ -44,24 +45,29 @@ app.post("/api/chat", async (req, res) => {
   if (contents.length === 0 || contents.at(-1).role !== "user")
     return res.status(400).json({ error: "Oxirgi xabar foydalanuvchidan bo'lishi kerak." });
 
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents,
-          tools: [{ google_search: {} }],          // Gemini internetdan jonli qidiradi
-        }),
-        signal: AbortSignal.timeout(45_000),
-      }
-    );
-    const data = await r.json();
+    try {
+    let r, data;
+    for (const model of MODELS) {
+      r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents,
+            tools: [{ google_search: {} }],
+          }),
+          signal: AbortSignal.timeout(45_000),
+        }
+      );
+      data = await r.json();
+      if (r.status !== 404) break;               // faqat "model topilmadi" bo'lsa keyingisini sinaymiz
+      console.error("Model topilmadi:", model);
+    }
     if (!r.ok) {
-      console.error("Gemini xatosi:", JSON.stringify(data));
-      return res.status(502).json({ error: "AI xizmati hozir javob bermayapti." });
+      console.error("Gemini xatosi:", r.status, JSON.stringify(data));
+      return res.status(502).json({ error: `AI xizmati javob bermadi (kod ${r.status}).` });
     }
 
     const cand = data.candidates?.[0];

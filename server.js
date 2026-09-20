@@ -21,7 +21,7 @@ const hostOf = (u) => { try { return new URL(u).hostname; } catch { return ""; }
 // Prompt: qidiruv yoqilgan va o'chirilgan holat uchun alohida (qidiruvsiz aniq raqam keltirish taqiqlanadi)
 // "Mening holatim" rejimi: bot savollar berib vaziyatni aniqlashtiradi, keyin yo'l xaritasi tuzadi
 const CASE_RULES = `
-Rejim "Mening holatim": foydalanuvchi o'z vaziyatini yozadi. Darhol xulosa chiqarma. Har xabarda faqat BITTA aniqlashtiruvchi savol ber (jami 3-5 ta): kim/qaysi tashkilot, aynan nima bo'lgan, qachon, qanday hujjat yoki dalil bor, foydalanuvchi qanday natija xohlaydi. Yetarli ma'lumot yig'ilgach (yoki foydalanuvchi "yetarli" desa) yo'l xaritasini tuz: 1) Vaziyat xulosasi 2) Sizning huquqlaringiz 3) Qadamlar (tartib bilan) 4) Qaysi organga murojaat qilish 5) Muddatlar 6) Tayyorlash kerak hujjatlar. Ma'lumot yetishmasa, taxmin qilma.`;
+Rejim "Mening holatim": foydalanuvchi o'z vaziyatini yozadi. Darhol xulosa chiqarma. Har xabarda faqat BITTA aniqlashtiruvchi savol ber (jami 3-5 ta): kim/qaysi tashkilot, aynan nima bo'lgan, qachon, qanday hujjat yoki dalil bor, foydalanuvchi qanday natija xohlaydi. Yetarli ma'lumot yig'ilgach (yoki foydalanuvchi "yetarli" desa) yo'l xaritasini tuz: 1) Vaziyat xulosasi 2) Sizning huquqlaringiz 3) Qadamlar (tartib bilan) 4) Qaysi organga murojaat qilish 5) Muddatlar 6) Tayyorlash kerak hujjatlar. Ma'lumot yetishmasa, taxmin qilma. Aniqlashtiruvchi savol berayotganda oxirgi eslatma jumlasini yozma: faqat qisqa izoh va savol.`;
 
 function buildPrompt(searchOn, mode) {
   const today = new Date().toISOString().slice(0, 10);
@@ -61,35 +61,42 @@ app.use("/api/", rateLimit({
 }));
 
 // Geminiga BITTA so'rov. useSearch=true bo'lsa internetdan jonli qidirish yoqiladi.
-async function askGemini(model, contents, useSearch, mode) {
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: buildPrompt(useSearch, mode) }] },
-        contents,
-        ...(useSearch ? { tools: [{ google_search: {} }] } : {}),
-      }),
-      signal: AbortSignal.timeout(30_000),
-    }
-  );
-  return { r, data: await r.json() };
+async function askGemini(model, contents, useSearch, mode, timeoutMs) {
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: buildPrompt(useSearch, mode) }] },
+          contents,
+          ...(useSearch ? { tools: [{ google_search: {} }] } : {}),
+        }),
+        signal: AbortSignal.timeout(timeoutMs),
+      }
+    );
+    return { r, data: await r.json().catch(() => ({})) };      // JSON bo'lmasa bo'sh obyekt
+  } catch (err) {                                              // tarmoq xatosi yoki vaqt tugashi: 504 yoki 0
+    return { r: { ok: false, status: err.name === "TimeoutError" ? 504 : 0 }, data: { error: { message: `${err.name}: ${err.message}` } } };
+  }
 }
 
-// Har model uchun: avval qidiruv bilan; limit (429) bo'lsa qidiruvsiz; u ham bo'lmasa keyingi modelga.
+// Har model uchun: avval qidiruv bilan; limit yoki kechikishda qidiruvsiz; u ham bo'lmasa keyingi modelga.
 async function generate(contents, mode) {
+  const deadline = Date.now() + 55_000;                      // umumiy vaqt chegarasi
   let last;
   for (const model of MODELS) {
     for (const searched of [true, false]) {
-      const { r, data } = await askGemini(model, contents, searched, mode);
+      const left = deadline - Date.now();
+      if (last && left < 3000) return last;
+      const { r, data } = await askGemini(model, contents, searched, mode, Math.min(20_000, left));
       last = { r, data, model, searched };
       if (r.ok) return last;
       console.error(`Gemini xatosi [${model}, qidiruv=${searched}]:`, r.status, JSON.stringify(data));
-      if (r.status !== 429) break;                          // qidiruvsiz qayta urinish faqat limitda
+      if (![0, 429, 504].includes(r.status)) break;          // qidiruvsiz qayta urinish faqat limit/kechikishda
     }
-    if (![404, 429, 503].includes(last.r.status)) break;    // kalit/so'rov xatosida boshqa model yordam bermaydi
+    if (![0, 404, 429, 503, 504].includes(last.r.status)) break;   // kalit/so'rov xatosida boshqa model yordam bermaydi
   }
   return last;
 }
@@ -114,8 +121,9 @@ app.post("/api/chat", async (req, res) => {
     const { r, data, model, searched } = await generate(contents, mode === "case" ? "case" : "");
     if (!r.ok) {
       const detail = DEBUG ? ` | ${data?.error?.message || ""}`.slice(0, 300) : "";
-      const msg = r.status === 429
-        ? "Hozir so'rovlar ko'p yoki limit tugagan. Birozdan keyin urinib ko'ring."
+      const msg = r.status === 429 ? "Hozir so'rovlar ko'p yoki limit tugagan. Birozdan keyin urinib ko'ring."
+        : r.status === 504 ? "AI xizmati kech javob berdi. Qayta urinib ko'ring."
+        : r.status === 0 ? "AI xizmatiga ulanib bo'lmadi. Qayta urinib ko'ring."
         : `AI xizmati javob bermadi (kod ${r.status}).`;
       return res.status(502).json({ error: msg + detail });
     }
@@ -132,7 +140,7 @@ app.post("/api/chat", async (req, res) => {
     // Ishonchlilik belgisi kodda hisoblanadi (modelga ishonib bo'lmaydi): rasmiy manba topildimi?
     const official = sources.some((x) => OFFICIAL.test(x.title) || OFFICIAL.test(hostOf(x.url)));
     // Qisqa aniqlashtiruvchi savol (manbasiz, "?" bilan tugaydi) uchun belgi kerak emas
-    const isQuestion = !sources.length && text.length < 500 && /\?\s*$/.test(text);
+    const isQuestion = !sources.length && text.length < 700 && /\?\s*$/.test(text);
     const trust = isQuestion ? "" : !searched ? "nosearch" : official ? "official" : "unverified";
     const date = new Date().toISOString().slice(0, 10);
 

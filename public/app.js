@@ -15,7 +15,11 @@ function newDraft() { return { id: Date.now().toString(36), title: "", messages:
 
 // Xavfsizlik: matnni HTML'ga qo'yishdan oldin belgilarni "zararsizlantiramiz" (XSS'dan himoya)
 const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const fmt = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+const fmt = (s) => esc(s)
+  .replace(/^\s*(\*\*\*|---)\s*$/gm, "<hr>")             // *** yoki --- : ajratuvchi chiziq
+  .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+  .replace(/\*(.+?)\*/g, "<i>$1</i>")                    // *qiya matn*
+  .replace(/\n/g, "<br>");
 
 // Javob tagidagi ishonchlilik belgisi (trust qiymatini server hisoblaydi)
 const BADGE = {

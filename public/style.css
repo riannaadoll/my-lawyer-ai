@@ -96,7 +96,12 @@ textarea { flex: 1; max-height: 140px; padding: 6px 0; border: 0; outline: 0; re
 /* 7) Kompyuter: panel ochilganda chat o'ngga suriladi. Telefon: pastki bo'sh joy kattaroq */
 @media (min-width: 768px) {
   body.side-open #chat { margin-left: 280px; }
-  body.side-open #menu { display: none; }   /* panel ochiq bo'lsa, tepadagi belgi yashirinadi */
+  body.side-open #menu { display: none; }   /* panel ochiq bo'lsa, tepadagi belgi yashirinadi: faqat panel ichidagisi qoladi */
   #backdrop { display: none; }
 }
 @media (max-width: 767px) { :root { --foot: 28px; } }   /* telefonda yozuv va input pastdan ko'tarilgan */
+
+/* 9) Scroll-bar ko'rinmasin (aylantirish g'ildirak va barmoq bilan ishlayveradi) */
+.messages, .faq, #chatList { scrollbar-width: none; }
+.messages::-webkit-scrollbar, .faq::-webkit-scrollbar, #chatList::-webkit-scrollbar { display: none; }
+.msg hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; }

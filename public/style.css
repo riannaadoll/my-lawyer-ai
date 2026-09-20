@@ -70,3 +70,11 @@ textarea { flex: 1; max-height: 140px; padding: 6px 0; border: 0; outline: 0; re
   .composer { padding-bottom: calc(var(--composer-lift) + env(safe-area-inset-bottom)); }
   #chat.is-empty .composer { padding-bottom: 12px; }  /* bo'sh chatda input aniq o'rtada qolsin */
 }
+
+/* 7) Yuklanish aylanasi va ishonchlilik belgisi */
+.msg.loading { padding: 14px 18px; }
+.spinner { display: block; width: 20px; height: 20px; border: 3px solid var(--line); border-top-color: var(--brand); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.badge { margin-top: 8px; padding: 6px 10px; border-radius: 10px; font-size: .8rem; }
+.badge.ok { background: #e6f6ea; color: #116329; }
+.badge.warn { background: #fff4e0; color: #8a5300; }

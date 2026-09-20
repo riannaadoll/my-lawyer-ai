@@ -17,6 +17,13 @@ function newDraft() { return { id: Date.now().toString(36), title: "", messages:
 const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
 
+// Javob tagidagi ishonchlilik belgisi (trust qiymatini server hisoblaydi)
+const BADGE = {
+  official:   ["ok",   "✅ Rasmiy manba topildi"],
+  unverified: ["warn", "⚠️ Rasmiy manba topilmadi. Lex.uz dan tekshiring"],
+  nosearch:   ["warn", "⚠️ Jonli qidiruvsiz javob. Lex.uz dan tekshiring"],
+};
+
 // ---- YANGI CHAT TUGMASI: xatoning tuzatilishi ----
 // Hozirgi chat bo'sh bo'lsa, yangisini YARATMAYMIZ — faqat inputga fokus beramiz.
 function newChat() {
@@ -42,7 +49,7 @@ async function send() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Xatolik yuz berdi.");
-    current.messages.push({ role: "assistant", text: data.text, sources: data.sources || [] });
+    current.messages.push({ role: "assistant", text: data.text, sources: data.sources || [], trust: data.trust, date: data.date });
   } catch (e) {
     el.status.textContent = e.message || "Ulanishda xatolik.";
   }
@@ -73,8 +80,10 @@ function render() {
   el.msgs.innerHTML = current.messages.map((m) => {
     const src = (m.sources || []).filter((s) => /^https?:\/\//.test(s.url))
       .map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>`).join("");
-    return `<div class="msg ${m.role}">${fmt(m.text)}${src ? `<div class="sources">${src}</div>` : ""}</div>`;
-  }).join("") + (busy ? `<div class="msg assistant loading">Javob izlanmoqda…</div>` : "");
+    const b = BADGE[m.trust];
+    const badge = b ? `<div class="badge ${b[0]}">${b[1]}${m.date ? " · " + esc(m.date) : ""}</div>` : "";
+    return `<div class="msg ${m.role}">${fmt(m.text)}${src ? `<div class="sources">${src}</div>` : ""}${badge}</div>`;
+  }).join("") + (busy ? `<div class="msg assistant loading" role="status" aria-label="Yuklanmoqda"><span class="spinner"></span></div>` : "");
   el.msgs.scrollTop = el.msgs.scrollHeight;
 
   // Limitga yetganda yozishni to'xtatamiz

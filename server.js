@@ -14,12 +14,29 @@ const MODELS = [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.5-flash-
 const MAX_CHARS = 1500;   // bitta xabarning maksimal uzunligi
 const MAX_HISTORY = 12;   // Geminiga yuboriladigan oxirgi xabarlar soni
 
-const SYSTEM_PROMPT = `Sen "AI Advocate" — O'zbekiston fuqarolariga huquqlari va qonunlar haqida yordam beradigan yordamchisan.
-- Foydalanuvchi tilida (asosan o'zbekcha) qisqa va aniq javob ber, faqat matn.
-- Ma'lumotni internetdan qidir. Birinchi navbatda lex.uz va boshqa rasmiy davlat saytlariga tayan.
-- Har javobda manbani ko'rsat: qonun/qaror nomi, modda, band, yil va (bilsang) oxirgi tahrir sanasi.
-- Manbalar bir-biriga zid bo'lsa, rasmiy manbani tanla. Aniq bilmasang, taxmin qilma: "aniq ma'lumot topa olmadim" de.
-- Oxirida bir qisqa jumla: bu ma'lumot, yuridik maslahat emas.`;
+// Rasmiy manba domenlari (ishonchlilik belgisi shu bo'yicha qo'yiladi)
+const OFFICIAL = /(^|\.)(lex\.uz|gov\.uz|president\.uz)$/i;
+const hostOf = (u) => { try { return new URL(u).hostname; } catch { return ""; } };
+
+// Prompt: qidiruv yoqilgan va o'chirilgan holat uchun alohida (qidiruvsiz aniq raqam keltirish taqiqlanadi)
+function buildPrompt(searchOn) {
+  const today = new Date().toISOString().slice(0, 10);
+  const base = `Sen "AI Advocate" — O'zbekiston Respublikasi qonunchiligi bo'yicha fuqarolarga yordam beradigan yordamchisan. Bugungi sana: ${today}.
+Til: foydalanuvchi qaysi tilda yozsa (o'zbek, rus yoki ingliz), shu tilda javob ber. Huquqiy terminlarni o'sha tilning rasmiy atamalari bilan yoz.
+Vaziyat noaniq bo'lsa (kim, nima bo'lgan, qachon, qanday hujjat bor), darhol javob berma: avval 2-4 ta aniqlashtiruvchi savol ber va to'xta.
+Aniq savolga sodda tilda, shu tuzilishda javob ber:
+**Qisqa javob:** ...
+**Tegishli norma:** kodeks/qonun nomi, modda, band
+**Izoh:** oddiy tilda
+**Qayerga murojaat qilish mumkin:** tegishli davlat organi
+**Manba:** ...
+Ishonchli asos topa olmasang, taxmin qilma. Shunday de: "Bu savol bo'yicha yetarlicha ishonchli huquqiy asos topilmadi. Aniqlik uchun yurist bilan maslahatlashish tavsiya etiladi."
+Murakkab yoki oqibati katta vaziyatda (sud, katta pul, jinoyat) malakali yuristga murojaat qilishni tavsiya et.
+Oxirida bir qisqa jumla: bu ma'lumot, yuridik maslahat emas.`;
+  return searchOn
+    ? base + "\nMa'lumotni internetdan qidir. Birinchi navbatda lex.uz va rasmiy davlat saytlariga (.gov.uz) tayan. Moddaning amaldagi tahririni va oxirgi o'zgarish sanasini ko'rsat. Manbalar zid bo'lsa, rasmiy manbani tanla."
+    : base + "\nMUHIM: hozir internetdan qidira olmaysan. Qaror/qonun raqami, sanasi va modda raqamini KELTIRMA: xotiradan yozsang noto'g'ri bo'lishi mumkin. Faqat umumiy tamoyilni tushuntir. 'Tegishli norma' va 'Manba' o'rniga shuni yoz: \"Aniq normani lex.uz'dan tekshiring.\"";
+}
 
 app.set("trust proxy", 1);                         // Render proxy orqasida IP to'g'ri aniqlansin
 app.use(express.json({ limit: "20kb" }));          // katta so'rovlarni rad etadi
@@ -39,7 +56,7 @@ async function askGemini(model, contents, useSearch) {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: buildPrompt(useSearch) }] },
         contents,
         ...(useSearch ? { tools: [{ google_search: {} }] } : {}),
       }),
@@ -94,14 +111,18 @@ app.post("/api/chat", async (req, res) => {
 
     const cand = data.candidates?.[0];
     let text = (cand?.content?.parts || []).map((p) => p.text || "").join("").trim();
-    if (!searched) text += "\n\n⚠️ Jonli qidiruv hozir ishlamadi, javob eskirgan bo'lishi mumkin. Aniq ma'lumot uchun lex.uz ni tekshiring.";
     // Gemini qidiruvda foydalangan saytlar (takrorlarsiz)
     const seen = new Set();
     const sources = (cand?.groundingMetadata?.groundingChunks || [])
       .map((c) => c.web).filter((w) => w?.uri && !seen.has(w.uri) && seen.add(w.uri))
       .map((w) => ({ title: w.title || w.uri, url: w.uri }));
 
-    res.json({ text: text || "Javob olinmadi, qayta urinib ko'ring.", sources });
+    // Ishonchlilik belgisi kodda hisoblanadi (modelga ishonib bo'lmaydi): rasmiy manba topildimi?
+    const official = sources.some((x) => OFFICIAL.test(x.title) || OFFICIAL.test(hostOf(x.url)));
+    const trust = !searched ? "nosearch" : official ? "official" : "unverified";
+    const date = new Date().toISOString().slice(0, 10);
+
+    res.json({ text: text || "Javob olinmadi, qayta urinib ko'ring.", sources, trust, date });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: "Serverga ulanishda xatolik." });

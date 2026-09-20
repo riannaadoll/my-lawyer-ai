@@ -2,6 +2,12 @@
 const MAX_MESSAGES = 40;              // bitta chatdagi xabarlar limiti (savol + javob)
 const KEY = "advocate_chats_v1";      // localStorage kaliti
 const $ = (s) => document.querySelector(s);
+
+// Til: saqlangan bo'lsa o'sha, bo'lmasa o'zbekcha. t("kalit") — tanlangan tildagi matn (i18n.js)
+const LANG_KEY = "advocate_lang";
+let lang = localStorage.getItem(LANG_KEY);
+if (!I18N[lang]) lang = "uz";
+const t = (k) => I18N[lang][k];
 const el = { chat: $("#chat"), list: $("#chatList"), msgs: $("#messages"), input: $("#input"), send: $("#send"),
              status: $("#status"), back: $("#backdrop"), search: $("#search"), pop: $("#pop"), name: $("#nameInput") };
 
@@ -22,11 +28,7 @@ const fmt = (s) => esc(s)
   .replace(/\n/g, "<br>");
 
 // Javob tagidagi ishonchlilik belgisi (trust qiymatini server hisoblaydi)
-const BADGE = {
-  official:   ["ok",   "✅ Rasmiy manba topildi"],
-  unverified: ["warn", "⚠️ Rasmiy manba topilmadi. Lex.uz dan tekshiring"],
-  nosearch:   ["warn", "⚠️ Jonli qidiruvsiz javob. Lex.uz dan tekshiring"],
-};
+const BADGE = { official: ["ok", "badgeOfficial"], unverified: ["warn", "badgeUnverified"], nosearch: ["warn", "badgeNosearch"] };
 
 // ---- YANGI CHAT TUGMASI: xatoning tuzatilishi ----
 // Hozirgi chat bo'sh bo'lsa, yangisini YARATMAYMIZ — faqat inputga fokus beramiz.
@@ -40,7 +42,7 @@ function newChat() {
 function startCase() {
   if (busy) return;
   current = newDraft(); current.mode = "case";
-  current.messages.push({ role: "assistant", text: "Vaziyatingizni qisqa yozing. Men bir nechta aniqlashtiruvchi savol beraman, keyin sizga yo'l xaritasini tayyorlayman." });
+  current.messages.push({ role: "assistant", text: t("caseHello") });
   autoClose(); render(); el.input.focus();
 }
 
@@ -57,13 +59,13 @@ async function send() {
   try {
     const res = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: current.mode, messages: current.messages.map(({ role, text }) => ({ role, text })) }),
+      body: JSON.stringify({ mode: current.mode, lang, messages: current.messages.map(({ role, text }) => ({ role, text })) }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Xatolik yuz berdi.");
+    if (!res.ok) throw new Error(data.error || t("errGeneric"));
     current.messages.push({ role: "assistant", text: data.text, sources: data.sources || [], trust: data.trust, date: data.date });
   } catch (e) {
-    el.status.textContent = e.message || "Ulanishda xatolik.";
+    el.status.textContent = e instanceof TypeError ? t("errNet") : e instanceof SyntaxError ? t("errGeneric") : (e.message || t("errGeneric"));
   }
   busy = false; save(); render();
 }
@@ -94,7 +96,7 @@ function render() {
     const src = (m.sources || []).filter((s) => /^https?:\/\//.test(s.url))
       .map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>`).join("");
     const b = BADGE[m.trust];
-    const badge = b ? `<div class="badge ${b[0]}">${b[1]}${m.date ? " · " + esc(m.date) : ""}</div>` : "";
+    const badge = b ? `<div class="badge ${b[0]}">${t(b[1])}${m.date ? " · " + esc(m.date) : ""}</div>` : "";
     return `<div class="msg ${m.role}">${fmt(m.text)}${src ? `<div class="sources">${src}</div>` : ""}${badge}</div>`;
   }).join("") + (busy ? `<div class="msg assistant loading" role="status" aria-label="Yuklanmoqda"><span class="spinner"></span></div>` : "");
   el.msgs.scrollTop = el.msgs.scrollHeight;
@@ -102,7 +104,7 @@ function render() {
   // Limitga yetganda yozishni to'xtatamiz
   const full = current.messages.length >= MAX_MESSAGES;
   el.input.disabled = full;
-  el.input.placeholder = full ? "Chat to'ldi. Yangi chat oching." : "Savolingizni yozing…";
+  el.input.placeholder = full ? t("full") : t("placeholder");
   el.send.disabled = busy || full;
 }
 
@@ -133,12 +135,12 @@ function visibleChats() {                       // qidiruv: sarlavha va xabarlar
 }
 function greet() {                              // soatga qarab salom
   const h = new Date().getHours();
-  const hello = h < 5 ? "Xayrli tun" : h < 12 ? "Xayrli tong" : h < 18 ? "Xayrli kun" : "Xayrli kech";
+  const hello = t("hello")[h < 5 ? 0 : h < 12 ? 1 : h < 18 ? 2 : 3];
   return `${hello}${userName ? ", " + userName : ""}`;
 }
 function paintProfile() {
   $("#avatar").textContent = (userName[0] || "M").toUpperCase();
-  $("#profileName").textContent = userName || "Mehmon";
+  $("#profileName").textContent = userName || t("guest");
 }
 el.search.addEventListener("input", render);
 $("#topSearch").onclick = () => { openSidebar(); el.search.focus(); };
@@ -152,10 +154,21 @@ el.name.addEventListener("input", () => {
   userName = el.name.value.trim(); localStorage.setItem(NAME_KEY, userName); paintProfile(); render();
 });
 $("#clearAll").onclick = () => {
-  if (busy || !confirm("Barcha chatlar o'chirilsinmi?")) return;
+  if (busy || !confirm(t("confirmClear"))) return;
   chats = []; current = newDraft(); save(); el.pop.hidden = true; render();
 };
-paintProfile();
+// ---- Til almashtirish: data-i18n belgili hamma matn qayta yoziladi ----
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach((e) => (e.textContent = t(e.dataset.i18n)));
+  document.querySelectorAll("[data-i18n-ph]").forEach((e) => (e.placeholder = t(e.dataset.i18nPh)));
+  document.querySelectorAll("[data-i18n-title]").forEach((e) => { const v = t(e.dataset.i18nTitle); e.title = v; e.setAttribute("aria-label", v); });
+  document.querySelectorAll(".faq-q").forEach((b) => (b.dataset.q = t(b.dataset.key)));   // bosilganda shu tildagi savol yuboriladi
+  $("#langSelect").value = lang;
+  paintProfile(); render();
+}
+$("#langSelect").onchange = (e) => { lang = e.target.value; localStorage.setItem(LANG_KEY, lang); applyLang(); };
+applyLang();
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");   // PWA
 function fitHeight() {

@@ -14,6 +14,14 @@ const MODELS = [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.5-flash-
 const MAX_CHARS = 1500;   // bitta xabarning maksimal uzunligi
 const MAX_HISTORY = 12;   // Geminiga yuboriladigan oxirgi xabarlar soni
 
+// Xato matnlari (klient yuborgan "lang" bo'yicha tanlanadi)
+const ERR = {
+  uz: { rate: "Juda ko'p so'rov. Bir daqiqadan keyin urinib ko'ring.", limit: "Hozir so'rovlar ko'p yoki limit tugagan. Birozdan keyin urinib ko'ring.", slow: "AI xizmati kech javob berdi. Qayta urinib ko'ring.", net: "AI xizmatiga ulanib bo'lmadi. Qayta urinib ko'ring.", fail: "AI xizmati javob bermadi (kod", down: "Serverga ulanishda xatolik.", nokey: "Serverda GEMINI_API_KEY sozlanmagan.", empty: "Xabar topilmadi.", last: "Oxirgi xabar foydalanuvchidan bo'lishi kerak.", none: "Javob olinmadi, qayta urinib ko'ring." },
+  ru: { rate: "Слишком много запросов. Повторите через минуту.", limit: "Сейчас много запросов или лимит исчерпан. Повторите позже.", slow: "ИИ-сервис отвечает слишком долго. Повторите попытку.", net: "Не удалось подключиться к ИИ-сервису. Повторите попытку.", fail: "ИИ-сервис не ответил (код", down: "Ошибка соединения с сервером.", nokey: "На сервере не задан GEMINI_API_KEY.", empty: "Сообщение не найдено.", last: "Последнее сообщение должно быть от пользователя.", none: "Ответ не получен, повторите попытку." },
+  en: { rate: "Too many requests. Try again in a minute.", limit: "Too many requests right now or the limit is reached. Try again later.", slow: "The AI service is responding slowly. Please try again.", net: "Could not reach the AI service. Please try again.", fail: "The AI service did not respond (code", down: "Server connection error.", nokey: "GEMINI_API_KEY is not set on the server.", empty: "No message found.", last: "The last message must be from the user.", none: "No answer received, please try again." },
+};
+const langOf = (l) => (["uz", "ru", "en"].includes(l) ? l : "uz");
+
 // Rasmiy manba domenlari (ishonchlilik belgisi shu bo'yicha qo'yiladi)
 const OFFICIAL = /(^|\.)(lex\.uz|gov\.uz|president\.uz)$/i;
 const hostOf = (u) => { try { return new URL(u).hostname; } catch { return ""; } };
@@ -57,7 +65,7 @@ app.use(express.static("public"));                 // sayt fayllari
 // Himoya: bitta IP daqiqasiga 15 tadan ko'p so'rov yubora olmaydi
 app.use("/api/", rateLimit({
   windowMs: 60_000, max: 15,
-  message: { error: "Juda ko'p so'rov. Bir daqiqadan keyin urinib ko'ring." },
+  handler: (req, res) => res.status(429).json({ error: ERR[langOf(req.body?.lang)].rate }),
 }));
 
 // Geminiga BITTA so'rov. useSearch=true bo'lsa internetdan jonli qidirish yoqiladi.
@@ -102,11 +110,11 @@ async function generate(contents, mode) {
 }
 
 app.post("/api/chat", async (req, res) => {
-  if (!API_KEY) return res.status(500).json({ error: "Serverda GEMINI_API_KEY sozlanmagan." });
-
-  const { messages, mode } = req.body || {};
+  const { messages, mode, lang } = req.body || {};
+  const E = (k) => ERR[langOf(lang)][k];
+  if (!API_KEY) return res.status(500).json({ error: E("nokey") });
   if (!Array.isArray(messages) || messages.length === 0)
-    return res.status(400).json({ error: "Xabar topilmadi." });
+    return res.status(400).json({ error: E("empty") });
 
   // Xabarlarni Gemini formatiga o'tkazamiz va uzunligini cheklaymiz
   const contents = messages.filter((m) => m && typeof m === "object").slice(-MAX_HISTORY).map((m) => ({
@@ -115,16 +123,13 @@ app.post("/api/chat", async (req, res) => {
   }));
   while (contents.length && contents[0].role === "model") contents.shift();   // ro'yxat foydalanuvchidan boshlansin
   if (contents.length === 0 || contents.at(-1).role !== "user")
-    return res.status(400).json({ error: "Oxirgi xabar foydalanuvchidan bo'lishi kerak." });
+    return res.status(400).json({ error: E("last") });
 
   try {
     const { r, data, model, searched } = await generate(contents, mode === "case" ? "case" : "");
     if (!r.ok) {
       const detail = DEBUG ? ` | ${data?.error?.message || ""}`.slice(0, 300) : "";
-      const msg = r.status === 429 ? "Hozir so'rovlar ko'p yoki limit tugagan. Birozdan keyin urinib ko'ring."
-        : r.status === 504 ? "AI xizmati kech javob berdi. Qayta urinib ko'ring."
-        : r.status === 0 ? "AI xizmatiga ulanib bo'lmadi. Qayta urinib ko'ring."
-        : `AI xizmati javob bermadi (kod ${r.status}).`;
+      const msg = r.status === 429 ? E("limit") : r.status === 504 ? E("slow") : r.status === 0 ? E("net") : `${E("fail")} ${r.status}).`;
       return res.status(502).json({ error: msg + detail });
     }
     console.log(`Javob: ${model}, ${searched ? "qidiruv bilan" : "qidiruvsiz"}`);
@@ -144,10 +149,10 @@ app.post("/api/chat", async (req, res) => {
     const trust = isQuestion ? "" : !searched ? "nosearch" : official ? "official" : "unverified";
     const date = new Date().toISOString().slice(0, 10);
 
-    res.json({ text: text || "Javob olinmadi, qayta urinib ko'ring.", sources, trust, date });
+    res.json({ text: text || E("none"), sources, trust, date });
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: "Serverga ulanishda xatolik." });
+    res.status(502).json({ error: E("down") });
   }
 });
 

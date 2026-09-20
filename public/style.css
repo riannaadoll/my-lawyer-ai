@@ -109,6 +109,9 @@ textarea { flex: 1; max-height: 140px; padding: 6px 0; border: 0; outline: 0; re
 /* 10) Yuqori va pastki panel: asosiy fondan sal to'qroq. Rangni --bar dan o'zgartir */
 :root { --bar: #ebebe7; }
 .topbar, .disclaimer { background: var(--bar); }
-.composer { max-width: none; margin: 0; padding-left: max(16px, calc((100% - 728px) / 2)); padding-right: max(16px, calc((100% - 728px) / 2)); }
+.composer { max-width: none; margin: 0; padding-left: max(16px, calc((100% - 728px) / 2)); padding-right: max(16px, calc((100% - 728px) / 2)); }   /* fon butun kenglikni egallasin, input esa avvalgidek markazda */
 #chat:not(.is-empty) .composer { background: var(--bar); border-top: 1px solid var(--line); }
 #chat:not(.is-empty) .topbar { border-bottom: 1px solid var(--line); }
+
+/* 11) Til tanlash (profil oynasida) */
+.pop select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font: inherit; color: var(--text); background: var(--surface); }

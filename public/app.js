@@ -2,8 +2,8 @@
 const MAX_MESSAGES = 40;              // bitta chatdagi xabarlar limiti (savol + javob)
 const KEY = "advocate_chats_v1";      // localStorage kaliti
 const $ = (s) => document.querySelector(s);
-const el = { chat: $("#chat"), list: $("#chatList"), msgs: $("#messages"), input: $("#input"),
-             send: $("#send"), status: $("#status"), side: $("#sidebar"), back: $("#backdrop") };
+const el = { chat: $("#chat"), list: $("#chatList"), msgs: $("#messages"), input: $("#input"), send: $("#send"),
+             status: $("#status"), back: $("#backdrop"), search: $("#search"), pop: $("#pop"), name: $("#nameInput") };
 
 let chats = load();          // faqat kamida 1 ta xabari bor chatlar saqlanadi
 let current = newDraft();    // hozir ochiq chat (bo'sh bo'lishi mumkin)
@@ -29,7 +29,7 @@ const BADGE = {
 function newChat() {
   if (busy) return;
   if (current.messages.length > 0) current = newDraft();
-  closeSidebar(); render(); el.input.focus();
+  autoClose(); render(); el.input.focus();
 }
 
 // "Mening holatim": yangi chat ochiladi, bot birinchi bo'lib salomlashadi (server bu xabarni Geminiga yubormaydi)
@@ -37,7 +37,7 @@ function startCase() {
   if (busy) return;
   current = newDraft(); current.mode = "case";
   current.messages.push({ role: "assistant", text: "Vaziyatingizni qisqa yozing. Men bir nechta aniqlashtiruvchi savol beraman, keyin sizga yo'l xaritasini tayyorlayman." });
-  closeSidebar(); render(); el.input.focus();
+  autoClose(); render(); el.input.focus();
 }
 
 async function send() {
@@ -67,14 +67,15 @@ async function send() {
 function render() {
   const empty = current.messages.length === 0;
   el.chat.classList.toggle("is-empty", empty);
+  if (empty) $("#greeting").textContent = greet();
 
   // Yon paneldagi chatlar ro'yxati
   el.list.innerHTML = "";
-  chats.forEach((c) => {
+  visibleChats().forEach((c) => {
     const li = document.createElement("li");
     li.className = c === current ? "active" : "";
     li.innerHTML = `<button class="chat-title">${esc(c.title)}</button><button class="chat-del" aria-label="O'chirish">✕</button>`;
-    li.children[0].onclick = () => { if (!busy) { current = c; closeSidebar(); render(); } };
+    li.children[0].onclick = () => { if (!busy) { current = c; autoClose(); render(); } };
     li.children[1].onclick = () => {
       if (busy) return;
       chats = chats.filter((x) => x !== c);
@@ -101,13 +102,13 @@ function render() {
   el.send.disabled = busy || full;
 }
 
-function closeSidebar() { el.side.classList.remove("open"); el.back.classList.remove("show"); }
-function openSidebar() { el.side.classList.add("open"); el.back.classList.add("show"); }
+function closeSidebar() { document.body.classList.remove("side-open"); }
+function openSidebar() { document.body.classList.add("side-open"); }
 
 $("#newChat").onclick = newChat;
 $("#caseBtn").onclick = startCase;
 document.querySelectorAll(".faq-q").forEach((b) => (b.onclick = () => { el.input.value = b.dataset.q; send(); }));
-$("#menu").onclick = openSidebar;
+$("#menu").onclick = () => document.body.classList.toggle("side-open");
 el.back.onclick = closeSidebar;
 el.send.onclick = send;
 el.input.addEventListener("keydown", (e) => {          // Enter — yuborish, Shift+Enter — yangi qator
@@ -116,6 +117,41 @@ el.input.addEventListener("keydown", (e) => {          // Enter — yuborish, Sh
 el.input.addEventListener("input", () => {              // input balandligi matnga qarab o'sadi
   el.input.style.height = "auto"; el.input.style.height = el.input.scrollHeight + "px";
 });
+
+// ---- Qidiruv, profil va salomlashuv ----
+const NAME_KEY = "advocate_name";
+let userName = localStorage.getItem(NAME_KEY) || "";
+const autoClose = () => { if (innerWidth < 768) closeSidebar(); };   // telefonda tanlagach panel yopiladi
+
+function visibleChats() {                       // qidiruv: sarlavha va xabarlar matni bo'yicha
+  const q = el.search.value.trim().toLowerCase();
+  return !q ? chats : chats.filter((c) => c.title.toLowerCase().includes(q) || c.messages.some((m) => m.text.toLowerCase().includes(q)));
+}
+function greet() {                              // soatga qarab salom
+  const h = new Date().getHours();
+  const hello = h < 5 ? "Xayrli tun" : h < 12 ? "Xayrli tong" : h < 18 ? "Xayrli kun" : "Xayrli kech";
+  return `${hello}${userName ? ", " + userName : ""}. Qanday yordam bera olaman?`;
+}
+function paintProfile() {
+  $("#avatar").textContent = (userName[0] || "M").toUpperCase();
+  $("#profileName").textContent = userName || "Mehmon";
+}
+el.search.addEventListener("input", render);
+$("#topSearch").onclick = () => { openSidebar(); el.search.focus(); };
+$("#topNew").onclick = newChat;
+$("#closeSide").onclick = closeSidebar;
+$("#profileBtn").onclick = (e) => { e.stopPropagation(); el.pop.hidden = !el.pop.hidden; };
+el.pop.onclick = (e) => e.stopPropagation();
+document.addEventListener("click", () => { el.pop.hidden = true; });
+el.name.value = userName;
+el.name.addEventListener("input", () => {
+  userName = el.name.value.trim(); localStorage.setItem(NAME_KEY, userName); paintProfile(); render();
+});
+$("#clearAll").onclick = () => {
+  if (busy || !confirm("Barcha chatlar o'chirilsinmi?")) return;
+  chats = []; current = newDraft(); save(); el.pop.hidden = true; render();
+};
+paintProfile();
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");   // PWA
 function fitHeight() {

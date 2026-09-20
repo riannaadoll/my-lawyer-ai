@@ -1,5 +1,5 @@
 // sw.js — service worker: sayt oflayn ochilishi va "ilova sifatida o'rnatish" uchun kerak.
-const CACHE = "advocate-v2";
+const CACHE = "advocate-v3";
 const SHELL = ["/", "/style.css", "/app.js", "/manifest.json", "/icons/icon-192.png", "/icons/logo-mark.png"];
 
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL))); self.skipWaiting(); });

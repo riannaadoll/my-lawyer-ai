@@ -4,30 +4,42 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Advocate — Mening advokatim</title>
-  <meta name="theme-color" content="#1800ad">
+  <meta name="theme-color" content="#2a2c30">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+  <!-- Chap panel: odatda yopiq, ☰ bilan ochiladi -->
   <aside id="sidebar">
-    <div class="brand"><img src="/icons/logo-mark.png" alt="" width="34" height="34"><span>AI Advocate</span></div>
+    <div class="side-head">
+      <div class="brand"><img src="/icons/logo-mark.png" alt="" width="30" height="30"><span>AI Advocate</span></div>
+      <button class="icon-btn" id="closeSide" aria-label="Yopish"><svg class="ico" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
     <button id="newChat" class="btn-new">+ Yangi chat</button>
+    <input id="search" class="search" type="search" placeholder="Chatlarni qidirish" autocomplete="off">
     <ul id="chatList"></ul>
+    <div class="profile">
+      <div id="pop" class="pop" hidden>
+        <label>Ismingiz<input id="nameInput" maxlength="30" placeholder="Ism kiriting"></label>
+        <button id="clearAll">Barcha chatlarni o'chirish</button>
+      </div>
+      <button id="profileBtn" class="profile-btn"><span class="avatar" id="avatar">M</span><span id="profileName">Mehmon</span></button>
+    </div>
   </aside>
   <div id="backdrop"></div>
 
   <!-- "is-empty" klassi chat bo'sh paytda input'ni ekran o'rtasiga qo'yadi -->
   <main id="chat" class="is-empty">
     <header class="topbar">
-      <button id="menu" aria-label="Menyu">☰</button><span>AI Advocate</span>
+      <button class="icon-btn" id="menu" aria-label="Menyu"><svg class="ico" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+      <span class="title">AI Advocate</span>
+      <span class="spacer"></span>
+      <button class="icon-btn" id="topSearch" aria-label="Qidirish"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
+      <button class="icon-btn" id="topNew" aria-label="Yangi chat"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>
     </header>
-    <section class="hero">
-      <img src="/icons/logo-mark.png" alt="AI Advocate" width="88" height="88">
-      <h1>Mening advokatim</h1>
-      <p>Huquqiy savolingizni yozing</p>
-    </section>
+    <section class="hero"><h1 id="greeting"></h1></section>
     <section id="messages" class="messages" aria-live="polite"></section>
     <div class="composer">
       <p id="status"></p>
@@ -37,13 +49,12 @@
       </div>
       <small>Bu ma'lumot, yuridik maslahat emas.</small>
     </div>
-    <!-- Bo'sh chatda input tagida ko'rinadi -->
+    <!-- Bo'sh chatda input tagida katta qatorlar -->
     <section class="faq" id="faq">
-      <button class="faq-case" id="caseBtn">🧭 Mening holatim<span>Vaziyatingizni bosqichma-bosqich aniqlashtiramiz</span></button>
-      <p class="faq-title">Ko'p beriladigan savollar</p>
-      <button class="faq-q" data-q="Ish beruvchi maoshimni bermayapti. Nima qilishim mumkin?">Ish beruvchi maoshimni bermayapti. Nima qilishim mumkin?</button>
-      <button class="faq-q" data-q="Do'kondan olgan mahsulotim nuqsonli chiqdi. Qanday huquqlarim bor?">Do'kondan olgan mahsulotim nuqsonli chiqdi. Qanday huquqlarim bor?</button>
-      <button class="faq-q" data-q="Ijara shartnomasida muammo bo'lsa nima qilaman?">Ijara shartnomasida muammo bo'lsa nima qilaman?</button>
+      <button class="faq-row" id="caseBtn"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span><b>Mening holatim</b> <em>vaziyatni bosqichma-bosqich aniqlashtirish</em></span></button>
+      <button class="faq-row faq-q" data-q="Ish beruvchi maoshimni bermayapti. Nima qilishim mumkin?"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2"/></svg><span>Ish beruvchi maoshimni bermayapti. Nima qilishim mumkin?</span></button>
+      <button class="faq-row faq-q" data-q="Do'kondan olgan mahsulotim nuqsonli chiqdi. Qanday huquqlarim bor?"><svg class="ico" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 016 0"/></svg><span>Do'kondan olgan mahsulotim nuqsonli chiqdi. Qanday huquqlarim bor?</span></button>
+      <button class="faq-row faq-q" data-q="Ijara shartnomasida muammo bo'lsa nima qilaman?"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg><span>Ijara shartnomasida muammo bo'lsa nima qilaman?</span></button>
     </section>
   </main>
   <script src="/app.js"></script>

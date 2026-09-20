@@ -3,7 +3,7 @@
   --brand: #2a2c30;                                  /* ko'mir rang: tugmalar, foydalanuvchi xabari */
   --bg: #f7f7f5; --surface: #fff; --side: #efefec; --hover: #e9e9e5;
   --text: #1d1f23; --muted: #6d7078; --line: #e2e2dd;
-  --radius: 16px; --composer-lift: 64px;
+  --radius: 16px; --foot: 12px;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 * { box-sizing: border-box; margin: 0; }
@@ -49,7 +49,10 @@ body.side-open #backdrop { opacity: 1; pointer-events: auto; }
 .topbar .title { margin-left: 6px; font-weight: 700; }
 .spacer { flex: 1; }
 .hero { display: none; }
-.hero h1 { font-size: clamp(1.4rem, 4vw, 2rem); font-weight: 600; text-align: center; line-height: 1.3; }
+/* Salomlashuv: 1-qator katta ("Xayrli kun, Ism"), 2-qator kichik va yengil */
+.hero h1 { text-align: center; font-weight: 600; font-size: clamp(1.7rem, 5vw, 2.4rem); line-height: 1.25; }
+.hero h1 span { display: block; }
+.hero .sub { margin-top: 8px; font-size: clamp(.95rem, 2.6vw, 1.1rem); font-weight: 300; color: var(--muted); }
 
 .messages { flex: 1; width: 100%; max-width: 760px; margin: 0 auto; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
 .msg { max-width: 88%; padding: 10px 14px; border-radius: var(--radius); line-height: 1.55; overflow-wrap: anywhere; }
@@ -59,9 +62,10 @@ body.side-open #backdrop { opacity: 1; pointer-events: auto; }
 .sources a { color: var(--brand); }
 
 /* 4) Input paneli */
-.composer { width: 100%; max-width: 760px; margin: 0 auto; padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); }
-.composer small { display: block; margin-top: 6px; text-align: center; color: var(--muted); font-size: .75rem; }
+.composer { width: 100%; max-width: 760px; margin: 0 auto; padding: 8px 16px 6px; }
+.disclaimer { order: 4; padding: 4px 16px calc(var(--foot) + env(safe-area-inset-bottom)); text-align: center; font-size: .72rem; color: var(--muted); }
 #status { min-height: 1.2em; margin-bottom: 4px; font-size: .85rem; color: #b00020; }
+#status:empty { display: none; }   /* bo'sh paytda joy egallamasin, input aniq markazda qolsin */
 .box { display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 26px; box-shadow: 0 1px 3px #0000000d; }
 textarea { flex: 1; max-height: 140px; padding: 6px 0; border: 0; outline: 0; resize: none; font: inherit; background: none; color: var(--text); }
 #send { width: 38px; height: 38px; border-radius: 50%; background: var(--brand); color: #fff; }
@@ -71,13 +75,14 @@ textarea { flex: 1; max-height: 140px; padding: 6px 0; border: 0; outline: 0; re
       hero va faq teng balandlik oladi (flex:1), composer ularning orasida — ya'ni markazda */
 .faq { display: none; }
 #chat.is-empty .topbar { position: absolute; top: 0; left: 0; right: 0; }
-#chat.is-empty .hero { order: 1; flex: 1; display: flex; align-items: flex-end; justify-content: center; padding: 0 20px 28px; }
+#chat.is-empty .hero { order: 1; flex: 1; display: flex; align-items: flex-end; justify-content: center; padding: 0 20px 40px; }
 #chat.is-empty .composer { order: 2; }
 #chat.is-empty .messages { display: none; }
-#chat.is-empty .faq { order: 3; flex: 1; display: flex; flex-direction: column; gap: 2px; width: 100%; max-width: 760px; margin: 0 auto; padding: 8px 12px 16px; overflow-y: auto; }
-.faq-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 13px 16px; border-radius: 14px; background: none; text-align: left; font-size: 1rem; }
+#chat.is-empty .disclaimer { position: absolute; left: 0; right: 0; bottom: 0; }   /* input aniq markazda qolsin */
+#chat.is-empty .faq { order: 3; flex: 1; display: flex; flex-direction: column; gap: 2px; width: 100%; max-width: 760px; margin: 0 auto; padding: 8px 12px 32px; overflow-y: auto; }
+.faq-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 14px; border-radius: 12px; background: none; text-align: left; font-size: .85rem; }
 .faq-row:hover { background: var(--hover); }
-.faq-row .ico { color: var(--muted); }
+.faq-row .ico { width: 18px; height: 18px; color: var(--muted); }
 .faq-row em { font-style: normal; color: var(--muted); }
 
 /* 6) Yuklanish aylanasi va ishonchlilik belgisi */
@@ -88,9 +93,6 @@ textarea { flex: 1; max-height: 140px; padding: 6px 0; border: 0; outline: 0; re
 .badge.ok { background: #e6f6ea; color: #116329; }
 .badge.warn { background: #fff4e0; color: #8a5300; }
 
-/* 7) Kompyuter: panel ochilganda chat o'ngga suriladi. Telefon: input pastdan ko'tarilgan */
+/* 7) Kompyuter: panel ochilganda chat o'ngga suriladi. Telefon: pastki bo'sh joy kattaroq */
 @media (min-width: 768px) { body.side-open #chat { margin-left: 280px; } #backdrop { display: none; } }
-@media (max-width: 767px) {
-  .composer { padding-bottom: calc(var(--composer-lift) + env(safe-area-inset-bottom)); }
-  #chat.is-empty .composer { padding-bottom: 12px; }
-}
+@media (max-width: 767px) { :root { --foot: 28px; } }   /* telefonda yozuv va input pastdan ko'tarilgan */

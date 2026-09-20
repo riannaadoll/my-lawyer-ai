@@ -15,7 +15,7 @@
   <aside id="sidebar">
     <div class="side-head">
       <div class="brand"><img src="/icons/logo-mark.png" alt="" width="30" height="30"><span>AI Advocate</span></div>
-      <button class="icon-btn" id="closeSide" aria-label="Yopish"><svg class="ico" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <button class="icon-btn" id="closeSide" aria-label="Yon panelni yopish" title="Yon panelni yopish"><svg class="ico" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3.5"/><path d="M9.5 4.5v15"/></svg></button>
     </div>
     <button id="newChat" class="btn-new">+ Yangi chat</button>
     <input id="search" class="search" type="search" placeholder="Chatlarni qidirish" autocomplete="off">
@@ -33,13 +33,13 @@
   <!-- "is-empty" klassi chat bo'sh paytda input'ni ekran o'rtasiga qo'yadi -->
   <main id="chat" class="is-empty">
     <header class="topbar">
-      <button class="icon-btn" id="menu" aria-label="Menyu"><svg class="ico" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+      <button class="icon-btn" id="menu" aria-label="Yon panelni ochish" title="Yon panelni ochish"><svg class="ico" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3.5"/><path d="M9.5 4.5v15"/></svg></button>
       <span class="title">AI Advocate</span>
       <span class="spacer"></span>
       <button class="icon-btn" id="topSearch" aria-label="Qidirish"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
       <button class="icon-btn" id="topNew" aria-label="Yangi chat"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>
     </header>
-    <section class="hero"><h1 id="greeting"></h1></section>
+    <section class="hero"><h1><span id="hello"></span><span class="sub">Qanday yordam bera olaman?</span></h1></section>
     <section id="messages" class="messages" aria-live="polite"></section>
     <div class="composer">
       <p id="status"></p>
@@ -47,7 +47,6 @@
         <textarea id="input" rows="1" maxlength="1500" placeholder="Savolingizni yozing…"></textarea>
         <button id="send" aria-label="Yuborish">➤</button>
       </div>
-      <small>Bu ma'lumot, yuridik maslahat emas.</small>
     </div>
     <!-- Bo'sh chatda input tagida katta qatorlar -->
     <section class="faq" id="faq">
@@ -56,6 +55,8 @@
       <button class="faq-row faq-q" data-q="Do'kondan olgan mahsulotim nuqsonli chiqdi. Qanday huquqlarim bor?"><svg class="ico" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 016 0"/></svg><span>Do'kondan olgan mahsulotim nuqsonli chiqdi. Qanday huquqlarim bor?</span></button>
       <button class="faq-row faq-q" data-q="Ijara shartnomasida muammo bo'lsa nima qilaman?"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg><span>Ijara shartnomasida muammo bo'lsa nima qilaman?</span></button>
     </section>
+    <!-- Eng pastda, barcha AI chatbotlardagi kabi -->
+    <p class="disclaimer">Bu ma'lumot, yuridik maslahat emas.</p>
   </main>
   <script src="/app.js"></script>
 </body>

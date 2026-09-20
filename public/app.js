@@ -67,7 +67,7 @@ async function send() {
 function render() {
   const empty = current.messages.length === 0;
   el.chat.classList.toggle("is-empty", empty);
-  if (empty) $("#greeting").textContent = greet();
+  if (empty) $("#hello").textContent = greet();
 
   // Yon paneldagi chatlar ro'yxati
   el.list.innerHTML = "";
@@ -130,7 +130,7 @@ function visibleChats() {                       // qidiruv: sarlavha va xabarlar
 function greet() {                              // soatga qarab salom
   const h = new Date().getHours();
   const hello = h < 5 ? "Xayrli tun" : h < 12 ? "Xayrli tong" : h < 18 ? "Xayrli kun" : "Xayrli kech";
-  return `${hello}${userName ? ", " + userName : ""}. Qanday yordam bera olaman?`;
+  return `${hello}${userName ? ", " + userName : ""}`;
 }
 function paintProfile() {
   $("#avatar").textContent = (userName[0] || "M").toUpperCase();

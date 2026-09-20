@@ -50,11 +50,13 @@ textarea { flex: 1; max-height: 140px; padding: 6px 0; border: 0; outline: 0; re
 #send { width: 38px; height: 38px; border-radius: 50%; background: var(--brand); color: #fff; }
 #send:disabled { opacity: .4; cursor: not-allowed; }
 
-/* 5) Chat bo'sh bo'lsa: xabarlar yashiriladi, logo + input ekran O'RTASIGA tushadi.
-      margin:auto qolgan bo'sh joyni teng bo'lib, guruhni markazga suradi */
-#chat.is-empty .messages { display: none; }
-#chat.is-empty .hero { display: block; margin-top: auto; }
-#chat.is-empty .composer { margin-bottom: auto; }
+/* 5) Chat bo'sh bo'lsa: xabarlar yashiriladi, input aniq O'RTADA, logo va yozuv uning TEPASIDA.
+      hero va bo'sh messages teng balandlik oladi (flex:1), composer esa ularning orasida — ya'ni markazda */
+#chat { position: relative; }
+#chat.is-empty .topbar { position: absolute; top: 0; left: 0; }
+#chat.is-empty .hero { order: 1; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 28px; }
+#chat.is-empty .composer { order: 2; }
+#chat.is-empty .messages { order: 3; flex: 1; display: block; padding: 0; visibility: hidden; }
 
 /* 6) Kompyuter: yon panel doim ochiq */
 @media (min-width: 768px) {

@@ -6,8 +6,10 @@ const rateLimit = require("express-rate-limit");
 const app = express();
 const PORT = process.env.PORT || 3000;             // Render portni o'zi beradi
 const API_KEY = process.env.GEMINI_API_KEY;        // kalit kodda EMAS, muhit o'zgaruvchisida
-// Modellar ketma-ket sinaladi: birinchisi topilmasa (404), keyingisiga o'tadi
-const MODELS = [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-2.5-flash"].filter(Boolean);
+const DEBUG = process.env.DEBUG_ERRORS === "1";    // yoqilsa, Google'ning xato xabari ekranda ko'rinadi
+
+// Modellar ketma-ket sinaladi. Har birining kvotasi alohida, shuning uchun biri to'lsa keyingisi ishlashi mumkin.
+const MODELS = [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"].filter(Boolean);
 
 const MAX_CHARS = 1500;   // bitta xabarning maksimal uzunligi
 const MAX_HISTORY = 12;   // Geminiga yuboriladigan oxirgi xabarlar soni
@@ -29,6 +31,40 @@ app.use("/api/", rateLimit({
   message: { error: "Juda ko'p so'rov. Bir daqiqadan keyin urinib ko'ring." },
 }));
 
+// Geminiga BITTA so'rov. useSearch=true bo'lsa internetdan jonli qidirish yoqiladi.
+async function askGemini(model, contents, useSearch) {
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents,
+        ...(useSearch ? { tools: [{ google_search: {} }] } : {}),
+      }),
+      signal: AbortSignal.timeout(30_000),
+    }
+  );
+  return { r, data: await r.json() };
+}
+
+// Har model uchun: avval qidiruv bilan; limit (429) bo'lsa qidiruvsiz; u ham bo'lmasa keyingi modelga.
+async function generate(contents) {
+  let last;
+  for (const model of MODELS) {
+    for (const searched of [true, false]) {
+      const { r, data } = await askGemini(model, contents, searched);
+      last = { r, data, model, searched };
+      if (r.ok) return last;
+      console.error(`Gemini xatosi [${model}, qidiruv=${searched}]:`, r.status, JSON.stringify(data));
+      if (r.status !== 429) break;                          // qidiruvsiz qayta urinish faqat limitda
+    }
+    if (![404, 429, 503].includes(last.r.status)) break;    // kalit/so'rov xatosida boshqa model yordam bermaydi
+  }
+  return last;
+}
+
 app.post("/api/chat", async (req, res) => {
   if (!API_KEY) return res.status(500).json({ error: "Serverda GEMINI_API_KEY sozlanmagan." });
 
@@ -37,41 +73,28 @@ app.post("/api/chat", async (req, res) => {
     return res.status(400).json({ error: "Xabar topilmadi." });
 
   // Xabarlarni Gemini formatiga o'tkazamiz va uzunligini cheklaymiz
-  const contents = messages.slice(-MAX_HISTORY).map((m) => ({
+  const contents = messages.filter((m) => m && typeof m === "object").slice(-MAX_HISTORY).map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: String(m.text || "").slice(0, MAX_CHARS) }],
   }));
-  while (contents[0].role === "model") contents.shift();   // ro'yxat foydalanuvchidan boshlansin
+  while (contents.length && contents[0].role === "model") contents.shift();   // ro'yxat foydalanuvchidan boshlansin
   if (contents.length === 0 || contents.at(-1).role !== "user")
     return res.status(400).json({ error: "Oxirgi xabar foydalanuvchidan bo'lishi kerak." });
 
-    try {
-    let r, data;
-    for (const model of MODELS) {
-      r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents,
-            tools: [{ google_search: {} }],
-          }),
-          signal: AbortSignal.timeout(45_000),
-        }
-      );
-      data = await r.json();
-      if (r.status !== 404) break;               // faqat "model topilmadi" bo'lsa keyingisini sinaymiz
-      console.error("Model topilmadi:", model);
-    }
+  try {
+    const { r, data, model, searched } = await generate(contents);
     if (!r.ok) {
-      console.error("Gemini xatosi:", r.status, JSON.stringify(data));
-      return res.status(502).json({ error: `AI xizmati javob bermadi (kod ${r.status}).` });
+      const detail = DEBUG ? ` | ${data?.error?.message || ""}`.slice(0, 300) : "";
+      const msg = r.status === 429
+        ? "Hozir so'rovlar ko'p yoki limit tugagan. Birozdan keyin urinib ko'ring."
+        : `AI xizmati javob bermadi (kod ${r.status}).`;
+      return res.status(502).json({ error: msg + detail });
     }
+    console.log(`Javob: ${model}, ${searched ? "qidiruv bilan" : "qidiruvsiz"}`);
 
     const cand = data.candidates?.[0];
-    const text = (cand?.content?.parts || []).map((p) => p.text || "").join("").trim();
+    let text = (cand?.content?.parts || []).map((p) => p.text || "").join("").trim();
+    if (!searched) text += "\n\n⚠️ Jonli qidiruv hozir ishlamadi, javob eskirgan bo'lishi mumkin. Aniq ma'lumot uchun lex.uz ni tekshiring.";
     // Gemini qidiruvda foydalangan saytlar (takrorlarsiz)
     const seen = new Set();
     const sources = (cand?.groundingMetadata?.groundingChunks || [])

@@ -32,12 +32,20 @@ function newChat() {
   closeSidebar(); render(); el.input.focus();
 }
 
+// "Mening holatim": yangi chat ochiladi, bot birinchi bo'lib salomlashadi (server bu xabarni Geminiga yubormaydi)
+function startCase() {
+  if (busy) return;
+  current = newDraft(); current.mode = "case";
+  current.messages.push({ role: "assistant", text: "Vaziyatingizni qisqa yozing. Men bir nechta aniqlashtiruvchi savol beraman, keyin sizga yo'l xaritasini tayyorlayman." });
+  closeSidebar(); render(); el.input.focus();
+}
+
 async function send() {
   const text = el.input.value.trim();
   if (!text || busy || current.messages.length >= MAX_MESSAGES) return;
 
   current.messages.push({ role: "user", text });
-  if (!current.title) current.title = text.slice(0, 40);
+  if (!current.title) current.title = (current.mode === "case" ? "🧭 " : "") + text.slice(0, 40);
   if (!chats.includes(current)) chats.unshift(current);   // ro'yxatga birinchi xabardan keyin qo'shiladi
   el.input.value = ""; el.input.style.height = "auto";
   el.status.textContent = ""; busy = true; save(); render();
@@ -45,7 +53,7 @@ async function send() {
   try {
     const res = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: current.messages.map(({ role, text }) => ({ role, text })) }),
+      body: JSON.stringify({ mode: current.mode, messages: current.messages.map(({ role, text }) => ({ role, text })) }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Xatolik yuz berdi.");
@@ -97,6 +105,8 @@ function closeSidebar() { el.side.classList.remove("open"); el.back.classList.re
 function openSidebar() { el.side.classList.add("open"); el.back.classList.add("show"); }
 
 $("#newChat").onclick = newChat;
+$("#caseBtn").onclick = startCase;
+document.querySelectorAll(".faq-q").forEach((b) => (b.onclick = () => { el.input.value = b.dataset.q; send(); }));
 $("#menu").onclick = openSidebar;
 el.back.onclick = closeSidebar;
 el.send.onclick = send;

@@ -19,7 +19,11 @@ const OFFICIAL = /(^|\.)(lex\.uz|gov\.uz|president\.uz)$/i;
 const hostOf = (u) => { try { return new URL(u).hostname; } catch { return ""; } };
 
 // Prompt: qidiruv yoqilgan va o'chirilgan holat uchun alohida (qidiruvsiz aniq raqam keltirish taqiqlanadi)
-function buildPrompt(searchOn) {
+// "Mening holatim" rejimi: bot savollar berib vaziyatni aniqlashtiradi, keyin yo'l xaritasi tuzadi
+const CASE_RULES = `
+Rejim "Mening holatim": foydalanuvchi o'z vaziyatini yozadi. Darhol xulosa chiqarma. Har xabarda faqat BITTA aniqlashtiruvchi savol ber (jami 3-5 ta): kim/qaysi tashkilot, aynan nima bo'lgan, qachon, qanday hujjat yoki dalil bor, foydalanuvchi qanday natija xohlaydi. Yetarli ma'lumot yig'ilgach (yoki foydalanuvchi "yetarli" desa) yo'l xaritasini tuz: 1) Vaziyat xulosasi 2) Sizning huquqlaringiz 3) Qadamlar (tartib bilan) 4) Qaysi organga murojaat qilish 5) Muddatlar 6) Tayyorlash kerak hujjatlar. Ma'lumot yetishmasa, taxmin qilma.`;
+
+function buildPrompt(searchOn, mode) {
   const today = new Date().toISOString().slice(0, 10);
   const base = `Sen "AI Advocate" — O'zbekiston Respublikasi qonunchiligi bo'yicha fuqarolarga yordam beradigan yordamchisan. Bugungi sana: ${today}.
 Til: foydalanuvchi qaysi tilda yozsa (o'zbek, rus yoki ingliz), javobning HAMMASINI shu tilda yoz: sarlavhalar, qat'iy jumlalar va oxirgi eslatma ham. Tillarni aralashtirma. Huquqiy terminlarni o'sha tilning rasmiy atamalari bilan yoz.
@@ -36,13 +40,14 @@ ru: "По этому вопросу не найдено достаточно н�
 en: "No sufficiently reliable legal basis was found for this question. Consulting a lawyer is recommended."
 Murakkab yoki oqibati katta vaziyatda (sud, katta pul, jinoyat) malakali yuristga murojaat qilishni tavsiya et.
 Oxirida foydalanuvchi tilida bir qisqa jumla: bu ma'lumot, yuridik maslahat emas.`;
-  return searchOn
+  const full = searchOn
     ? base + "\nMa'lumotni internetdan qidir. Birinchi navbatda lex.uz va rasmiy davlat saytlariga (.gov.uz) tayan. Moddaning amaldagi tahririni va oxirgi o'zgarish sanasini ko'rsat. Manbalar zid bo'lsa, rasmiy manbani tanla."
     : base + `
 MUHIM: hozir internetdan qidira olmaysan. Qaror/qonun raqami, sanasi va modda raqamini KELTIRMA: xotiradan yozsang noto'g'ri bo'lishi mumkin. Faqat umumiy tamoyilni tushuntir. 'Tegishli norma' va 'Manba' o'rniga shu jumlani yoz (foydalanuvchi tilidagisini):
 uz: "Aniq normani lex.uz'dan tekshiring."
 ru: "Точную норму проверьте на lex.uz."
 en: "Please verify the exact provision on lex.uz."`;
+  return mode === "case" ? full + CASE_RULES : full;
 }
 
 app.set("trust proxy", 1);                         // Render proxy orqasida IP to'g'ri aniqlansin
@@ -56,14 +61,14 @@ app.use("/api/", rateLimit({
 }));
 
 // Geminiga BITTA so'rov. useSearch=true bo'lsa internetdan jonli qidirish yoqiladi.
-async function askGemini(model, contents, useSearch) {
+async function askGemini(model, contents, useSearch, mode) {
   const r = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: buildPrompt(useSearch) }] },
+        systemInstruction: { parts: [{ text: buildPrompt(useSearch, mode) }] },
         contents,
         ...(useSearch ? { tools: [{ google_search: {} }] } : {}),
       }),
@@ -74,11 +79,11 @@ async function askGemini(model, contents, useSearch) {
 }
 
 // Har model uchun: avval qidiruv bilan; limit (429) bo'lsa qidiruvsiz; u ham bo'lmasa keyingi modelga.
-async function generate(contents) {
+async function generate(contents, mode) {
   let last;
   for (const model of MODELS) {
     for (const searched of [true, false]) {
-      const { r, data } = await askGemini(model, contents, searched);
+      const { r, data } = await askGemini(model, contents, searched, mode);
       last = { r, data, model, searched };
       if (r.ok) return last;
       console.error(`Gemini xatosi [${model}, qidiruv=${searched}]:`, r.status, JSON.stringify(data));
@@ -92,7 +97,7 @@ async function generate(contents) {
 app.post("/api/chat", async (req, res) => {
   if (!API_KEY) return res.status(500).json({ error: "Serverda GEMINI_API_KEY sozlanmagan." });
 
-  const { messages } = req.body || {};
+  const { messages, mode } = req.body || {};
   if (!Array.isArray(messages) || messages.length === 0)
     return res.status(400).json({ error: "Xabar topilmadi." });
 
@@ -106,7 +111,7 @@ app.post("/api/chat", async (req, res) => {
     return res.status(400).json({ error: "Oxirgi xabar foydalanuvchidan bo'lishi kerak." });
 
   try {
-    const { r, data, model, searched } = await generate(contents);
+    const { r, data, model, searched } = await generate(contents, mode === "case" ? "case" : "");
     if (!r.ok) {
       const detail = DEBUG ? ` | ${data?.error?.message || ""}`.slice(0, 300) : "";
       const msg = r.status === 429
@@ -126,7 +131,9 @@ app.post("/api/chat", async (req, res) => {
 
     // Ishonchlilik belgisi kodda hisoblanadi (modelga ishonib bo'lmaydi): rasmiy manba topildimi?
     const official = sources.some((x) => OFFICIAL.test(x.title) || OFFICIAL.test(hostOf(x.url)));
-    const trust = !searched ? "nosearch" : official ? "official" : "unverified";
+    // Qisqa aniqlashtiruvchi savol (manbasiz, "?" bilan tugaydi) uchun belgi kerak emas
+    const isQuestion = !sources.length && text.length < 500 && /\?\s*$/.test(text);
+    const trust = isQuestion ? "" : !searched ? "nosearch" : official ? "official" : "unverified";
     const date = new Date().toISOString().slice(0, 10);
 
     res.json({ text: text || "Javob olinmadi, qayta urinib ko'ring.", sources, trust, date });

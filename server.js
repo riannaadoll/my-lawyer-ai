@@ -35,7 +35,8 @@ Rejim "Mening holatim": foydalanuvchi o'z vaziyatini yozadi. Darhol xulosa chiqa
 
 // Rasm (hujjat surati) yuborilganda qo'shiladigan qoida
 const IMAGE_RULES = `
-Foydalanuvchi rasm (hujjat surati) yubordi: bu shartnoma, jarima, ish beruvchidan hujjat, rasmiy xat yoki qaror bo'lishi mumkin. Avval rasmdagi matnni diqqat bilan o'qi, muhim joylarni (summalar, sanalar, tomonlar, majburiyatlar, modda raqamlari) ajratib ko'rsat, so'ng tegishli qonun normalarini top va sodda tilda tushuntir. Agar biror raqam, modda yoki so'z aniq o'qilmasa yoki noaniq bo'lsa, TAXMIN QILMA — aniq qaysi joyi noaniqligini ayt va foydalanuvchidan o'sha qismni yozib berishni so'ra.`;
+Foydalanuvchi rasm (hujjat surati) yubordi: bu shartnoma, jarima, ish beruvchidan hujjat, rasmiy xat yoki qaror bo'lishi mumkin. Avval rasmdagi matnni diqqat bilan o'qi, muhim joylarni (summalar, sanalar, tomonlar, majburiyatlar, modda raqamlari) ajratib ko'rsat, so'ng tegishli qonun normalarini top va sodda tilda tushuntir.
+MUHIM: har bir raqam, sana yoki modda haqida o'zingga savol ber — "buni 100% ishonch bilan o'qidimmi, yoki qisman xira/noaniq bo'lgani uchun eng ehtimolli variantni yozayapmanmi?". Agar to'liq ishonch bo'lmasa (hatto qisman xira, siljigan yoki fon bilan qorishib ketgan bo'lsa ham), uni umuman TAXMIN QILMA va jim ham qoldirma: javobda alohida "Aniq bo'lmagan joylar" qismini och, qaysi maydon(lar) o'qib bo'lmagani yoki noaniq ekanini aniq ayt (masalan: "hujjat raqami" yoki "jarima miqdori"), va foydalanuvchidan shu qismni yozib berishni so'ra. Faqat to'liq va aniq o'qilgan raqamlarni asosiy javobga qo'sh.`;
 
 function buildPrompt(searchOn, mode, hasImage) {
   const today = new Date().toISOString().slice(0, 10);

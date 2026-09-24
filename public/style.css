@@ -118,3 +118,12 @@ textarea { flex: 1; max-height: 140px; padding: 6px 0; border: 0; outline: 0; re
 
 /* 12) Oltin urg'u: input fokusda oltin ramka */
 .box:focus-within, .search:focus, .pop input:focus, .pop select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px #f0c30f33; outline: 0; }
+
+/* 13) Rasm biriktirish: tugma va yuborishdan oldingi kichik ko'rinish */
+.attach-btn { flex: none; width: 34px; height: 34px; color: var(--muted); }
+.attach-btn:hover { background: var(--hover); }
+.preview { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.preview[hidden] { display: none; }
+.preview img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; border: 1px solid var(--line); }
+.preview #removeImage { margin-left: 4px; width: 26px; height: 26px; }
+.msg-img { display: block; max-width: 220px; max-height: 220px; border-radius: 12px; margin-bottom: 6px; object-fit: cover; }

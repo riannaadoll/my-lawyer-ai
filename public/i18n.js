@@ -13,6 +13,8 @@ const I18N = {
     caseHello: "Vaziyatingizni qisqa yozing. Men bir nechta aniqlashtiruvchi savol beraman, keyin sizga yo'l xaritasini tayyorlayman.",
     badgeOfficial: "✅ Rasmiy manba topildi", badgeUnverified: "⚠️ Rasmiy manba topilmadi. Lex.uz dan tekshiring", badgeNosearch: "⚠️ Jonli qidiruvsiz javob. Lex.uz dan tekshiring",
     errGeneric: "Xatolik yuz berdi.", errNet: "Ulanishda xatolik. Internetni tekshiring.",
+    attach: "Rasm biriktirish", removeImage: "Rasmni olib tashlash", imageMsg: "🖼️ Rasm yuborildi",
+    badFile: "Faqat rasm fayli (JPG, PNG, WEBP) yuklang.", tooBig: "Fayl juda katta (15 MB dan oshmasin).",
   },
   ru: {
     newChat: "+ Новый чат", search: "Поиск по чатам", guest: "Гость", name: "Ваше имя", namePh: "Введите имя", lang: "Язык",
@@ -27,6 +29,8 @@ const I18N = {
     caseHello: "Кратко опишите вашу ситуацию. Я задам несколько уточняющих вопросов, а затем подготовлю для вас план действий.",
     badgeOfficial: "✅ Найден официальный источник", badgeUnverified: "⚠️ Официальный источник не найден. Проверьте на lex.uz", badgeNosearch: "⚠️ Ответ без поиска в интернете. Проверьте на lex.uz",
     errGeneric: "Произошла ошибка.", errNet: "Ошибка соединения. Проверьте интернет.",
+    attach: "Прикрепить изображение", removeImage: "Удалить изображение", imageMsg: "🖼️ Изображение отправлено",
+    badFile: "Загружайте только изображения (JPG, PNG, WEBP).", tooBig: "Файл слишком большой (не более 15 МБ).",
   },
   en: {
     newChat: "+ New chat", search: "Search chats", guest: "Guest", name: "Your name", namePh: "Enter your name", lang: "Language",
@@ -41,5 +45,7 @@ const I18N = {
     caseHello: "Briefly describe your situation. I'll ask a few clarifying questions, then prepare a step-by-step roadmap for you.",
     badgeOfficial: "✅ Official source found", badgeUnverified: "⚠️ No official source found. Please verify on lex.uz", badgeNosearch: "⚠️ Answer without live search. Please verify on lex.uz",
     errGeneric: "Something went wrong.", errNet: "Connection error. Check your internet.",
+    attach: "Attach image", removeImage: "Remove image", imageMsg: "🖼️ Image sent",
+    badFile: "Please upload an image file (JPG, PNG, WEBP).", tooBig: "File is too large (max 15 MB).",
   },
 };

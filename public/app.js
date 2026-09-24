@@ -9,7 +9,42 @@ let lang = localStorage.getItem(LANG_KEY);
 if (!I18N[lang]) lang = "uz";
 const t = (k) => I18N[lang][k];
 const el = { chat: $("#chat"), list: $("#chatList"), msgs: $("#messages"), input: $("#input"), send: $("#send"),
-             status: $("#status"), back: $("#backdrop"), search: $("#search"), pop: $("#pop"), name: $("#nameInput") };
+             status: $("#status"), back: $("#backdrop"), search: $("#search"), pop: $("#pop"), name: $("#nameInput"),
+             file: $("#fileInput"), preview: $("#preview"), previewImg: $("#previewImg") };
+
+// Rasm yuklash: hozir biriktirilgan (hali yuborilmagan) rasm. Yuborilgach tozalanadi.
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;         // brauzerdan qabul qilinadigan asl fayl chegarasi
+let pendingImage = null;   // { sendMime, sendData, thumbMime, thumbData } — hammasi base64 (prefiksiz)
+
+// Rasmni ikki o'lchamda siqadi: "send" — Geminiga yuboriladigan sifat, "thumb" — chatda ko'rsatish/saqlash uchun kichik nusxa
+async function compressImage(file) {
+  const src = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+    const draw = (maxDim, quality) => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      return canvas.toDataURL("image/jpeg", quality).split(",")[1];
+    };
+    return { sendMime: "image/jpeg", sendData: draw(1400, 0.75), thumbMime: "image/jpeg", thumbData: draw(240, 0.5) };
+  } finally {
+    URL.revokeObjectURL(src);
+  }
+}
+function showPreview() { el.previewImg.src = `data:${pendingImage.thumbMime};base64,${pendingImage.thumbData}`; el.preview.hidden = false; }
+function clearPreview() { pendingImage = null; el.preview.hidden = true; el.previewImg.src = ""; }
+el.file.addEventListener("change", async () => {
+  const file = el.file.files[0]; el.file.value = "";
+  if (!file) return;
+  if (!file.type.startsWith("image/")) { el.status.textContent = t("badFile"); return; }
+  if (file.size > MAX_IMAGE_BYTES) { el.status.textContent = t("tooBig"); return; }
+  try { pendingImage = await compressImage(file); el.status.textContent = ""; showPreview(); }
+  catch { el.status.textContent = t("badFile"); }
+});
+$("#attachBtn").onclick = () => el.file.click();
+$("#removeImage").onclick = clearPreview;
 
 let chats = load();          // faqat kamida 1 ta xabari bor chatlar saqlanadi
 let current = newDraft();    // hozir ochiq chat (bo'sh bo'lishi mumkin)
@@ -48,18 +83,23 @@ function startCase() {
 
 async function send() {
   const text = el.input.value.trim();
-  if (!text || busy || current.messages.length >= MAX_MESSAGES) return;
+  const img = pendingImage;                              // yuborilayotgan rasm (bo'lsa)
+  if ((!text && !img) || busy || current.messages.length >= MAX_MESSAGES) return;
 
-  current.messages.push({ role: "user", text });
-  if (!current.title) current.title = (current.mode === "case" ? "🧭 " : "") + text.slice(0, 40);
+  current.messages.push({ role: "user", text: text || t("imageMsg"), image: img ? { mime: img.thumbMime, data: img.thumbData } : undefined });
+  if (!current.title) current.title = (current.mode === "case" ? "🧭 " : "") + (text || t("imageMsg")).slice(0, 40);
   if (!chats.includes(current)) chats.unshift(current);   // ro'yxatga birinchi xabardan keyin qo'shiladi
-  el.input.value = ""; el.input.style.height = "auto";
+  el.input.value = ""; el.input.style.height = "auto"; clearPreview();
   el.status.textContent = ""; busy = true; save(); render();
 
   try {
     const res = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: current.mode, lang, messages: current.messages.map(({ role, text }) => ({ role, text })) }),
+      body: JSON.stringify({
+        mode: current.mode, lang,
+        messages: current.messages.map(({ role, text }) => ({ role, text })),
+        image: img ? { mime: img.sendMime, data: img.sendData } : undefined,   // faqat shu so'rov uchun, tarixga qayta yuborilmaydi
+      }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || t("errGeneric"));
@@ -97,7 +137,8 @@ function render() {
       .map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>`).join("");
     const b = BADGE[m.trust];
     const badge = b ? `<div class="badge ${b[0]}">${t(b[1])}${m.date ? " · " + esc(m.date) : ""}</div>` : "";
-    return `<div class="msg ${m.role}">${fmt(m.text)}${src ? `<div class="sources">${src}</div>` : ""}${badge}</div>`;
+    const img = m.image ? `<img class="msg-img" src="data:${esc(m.image.mime)};base64,${esc(m.image.data)}" alt="">` : "";
+    return `<div class="msg ${m.role}">${img}${fmt(m.text)}${src ? `<div class="sources">${src}</div>` : ""}${badge}</div>`;
   }).join("") + (busy ? `<div class="msg assistant loading" role="status" aria-label="Yuklanmoqda"><span class="spinner"></span></div>` : "");
   el.msgs.scrollTop = el.msgs.scrollHeight;
 

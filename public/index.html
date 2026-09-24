@@ -46,7 +46,13 @@
     <section id="messages" class="messages" aria-live="polite"></section>
     <div class="composer">
       <p id="status"></p>
+      <div class="preview" id="preview" hidden>
+        <img id="previewImg" alt="">
+        <button class="icon-btn" id="removeImage" data-i18n-title="removeImage"><svg class="ico" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
       <div class="box">
+        <button class="icon-btn attach-btn" id="attachBtn" data-i18n-title="attach"><svg class="ico" viewBox="0 0 24 24"><path d="M8 12.5l6.5-6.5a3.5 3.5 0 015 5L11 19.5a5.5 5.5 0 01-8-8L12 2.5"/></svg></button>
+        <input type="file" id="fileInput" accept="image/*" hidden>
         <textarea id="input" rows="1" maxlength="1500"></textarea>
         <button id="send" aria-label="Send">➤</button>
       </div>
